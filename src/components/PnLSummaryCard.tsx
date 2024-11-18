@@ -3,7 +3,6 @@ import {
   CardContent,
   Typography,
   Box,
-  Divider,
 } from '@mui/material'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import TrendingDownIcon from '@mui/icons-material/TrendingDown'
