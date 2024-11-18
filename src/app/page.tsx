@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+import type { Trade } from '@/types/supabase'
 import {
   Box,
   Typography,
@@ -41,7 +43,7 @@ import {
   Tab, 
   Paper 
 } from '@mui/material';
-import { supabase } from '@/lib/supabase'
+import PnLSummaryCard from '@/components/PnLSummaryCard'
 
 // Bitcoin Price Card Component
 function BitcoinPriceCard({ price, priceChange }: { price: number, priceChange?: number }) {
@@ -75,35 +77,6 @@ function BitcoinPriceCard({ price, priceChange }: { price: number, priceChange?:
       </CardContent>
     </Card>
   )
-}
-
-interface Trade {
-  id: number
-  type: 'Buy' | 'Sell'
-  entryDate: Date
-  entryPrice: number
-  amount: number
-  realizedPnL: { value: number; unit: 'USD' | 'BTC' } | null
-  unrealizedPnL: { value: number; unit: 'USD' | 'BTC' } | null
-  status: 'Open' | 'Closed'
-  cashValue?: number
-}
-
-function calculateUnrealizedPnL(trade: Trade, currentBtcPrice: number): { value: number; unit: 'USD' | 'BTC' } {
-  if (trade.type === 'Buy') {
-    return {
-      value: (currentBtcPrice - trade.entryPrice) * trade.amount,
-      unit: 'USD'
-    }
-  } else {
-    const initialCashValue = trade.entryPrice * trade.amount // How much cash we got
-    const currentBtcAmount = initialCashValue / currentBtcPrice // How much BTC we can buy now
-    const btcDifference = currentBtcAmount - trade.amount // Positive means profit
-    return {
-      value: btcDifference,
-      unit: 'BTC'
-    }
-  }
 }
 
 // Add this interface for the form
@@ -318,125 +291,6 @@ function CloseTradeDialog({
     </Dialog>
   )
 }
-// Add this new component
-function PnLSummaryCard({ trades }: { trades: Trade[] }) {
-  // Calculate cumulative values
-  const summary = trades.reduce((acc, trade) => {
-    // Handle Unrealized P&L for open trades
-    if (trade.status === 'Open' && trade.unrealizedPnL) {
-      if (trade.unrealizedPnL.unit === 'USD') {
-        acc.unrealizedUSD += trade.unrealizedPnL.value
-      } else {
-        acc.unrealizedBTC += trade.unrealizedPnL.value
-      }
-    }
-    
-    // Handle Realized P&L for closed trades
-    if (trade.realizedPnL) {
-      if (trade.realizedPnL.unit === 'USD') {
-        acc.realizedUSD += trade.realizedPnL.value
-      } else {
-        acc.realizedBTC += trade.realizedPnL.value
-      }
-    }
-    
-    return acc
-  }, {
-    unrealizedUSD: 0,
-    unrealizedBTC: 0,
-    realizedUSD: 0,
-    realizedBTC: 0,
-  })
-
-  return (
-    <Card sx={{ 
-      background: 'rgba(255, 255, 255, 0.05)',
-      borderRadius: 2,
-      height: '100%' 
-    }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <TrendingUpIcon sx={{ mr: 1 }} />
-          <Typography variant="h6" color="text.secondary">
-            P&L Summary
-          </Typography>
-        </Box>
-
-        <Grid container spacing={2}>
-          {/* Unrealized P&L Section */}
-          <Grid item xs={12}>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              Unrealized P&L
-            </Typography>
-            {summary.unrealizedUSD !== 0 && (
-              <Typography 
-                variant="h6" 
-                color={summary.unrealizedUSD >= 0 ? 'success.main' : 'error.main'}
-                gutterBottom
-              >
-                {summary.unrealizedUSD >= 0 ? '+' : ''}
-                ${summary.unrealizedUSD.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </Typography>
-            )}
-            {summary.unrealizedBTC !== 0 && (
-              <Typography 
-                variant="h6" 
-                color={summary.unrealizedBTC >= 0 ? 'success.main' : 'error.main'}
-                gutterBottom
-              >
-                {summary.unrealizedBTC >= 0 ? '+' : ''}
-                {summary.unrealizedBTC.toFixed(4)} BTC
-              </Typography>
-            )}
-            {summary.unrealizedUSD === 0 && summary.unrealizedBTC === 0 && (
-              <Typography variant="h6" color="text.secondary">
-                No open positions
-              </Typography>
-            )}
-          </Grid>
-
-          {/* Realized P&L Section */}
-          <Grid item xs={12}>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              Realized P&L
-            </Typography>
-            {summary.realizedUSD !== 0 && (
-              <Typography 
-                variant="h6" 
-                color={summary.realizedUSD >= 0 ? 'success.main' : 'error.main'}
-                gutterBottom
-              >
-                {summary.realizedUSD >= 0 ? '+' : ''}
-                ${summary.realizedUSD.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </Typography>
-            )}
-            {summary.realizedBTC !== 0 && (
-              <Typography 
-                variant="h6" 
-                color={summary.realizedBTC >= 0 ? 'success.main' : 'error.main'}
-                gutterBottom
-              >
-                {summary.realizedBTC >= 0 ? '+' : ''}
-                {summary.realizedBTC.toFixed(4)} BTC
-              </Typography>
-            )}
-            {summary.realizedUSD === 0 && summary.realizedBTC === 0 && (
-              <Typography variant="h6" color="text.secondary">
-                No closed trades
-              </Typography>
-            )}
-          </Grid>
-        </Grid>
-      </CardContent>
-    </Card>
-  )
-}
 
 export default function Dashboard() {
   const [trades, setTrades] = useState<Trade[]>([])
@@ -448,11 +302,9 @@ export default function Dashboard() {
 
   // Fetch Bitcoin price
   useEffect(() => {
-    const fetchPrice = async () => {
+    const fetchBitcoinPrice = async () => {
       try {
-        const response = await fetch(
-          'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true'
-        )
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true')
         const data = await response.json()
         setCurrentBtcPrice(data.bitcoin.usd)
         setPriceChange(data.bitcoin.usd_24h_change)
@@ -461,15 +313,74 @@ export default function Dashboard() {
       }
     }
 
-    fetchPrice()
-    const interval = setInterval(fetchPrice, 30000)
+    fetchBitcoinPrice()
+    const interval = setInterval(fetchBitcoinPrice, 60000) // Update every minute
+
     return () => clearInterval(interval)
   }, [])
 
-  // Fetch trades from Supabase on component mount
+  // Update unrealized P&L when price changes
+  useEffect(() => {
+    if (currentBtcPrice <= 0) return
+
+    setTrades(prevTrades => 
+      prevTrades.map(trade => {
+        if (trade.status === 'Open') {
+          return {
+            ...trade,
+            unrealizedPnL: calculateUnrealizedPnL(trade, currentBtcPrice)
+          }
+        }
+        return trade
+      })
+    )
+  }, [currentBtcPrice]) // Only depend on price changes
+
+  // Fetch trades
   useEffect(() => {
     fetchTrades()
   }, [])
+
+  const calculateUnrealizedPnL = (trade: Trade, currentPrice: number): { value: number; unit: 'USD' | 'BTC' } => {
+    if (trade.type === 'Buy') {
+      // For Buy trades: (Current Price - Entry Price) * Amount in USD
+      const pnlValue = (currentPrice - trade.entryPrice) * trade.amount
+      return {
+        value: pnlValue,
+        unit: 'USD'
+      }
+    } else {
+      // For Sell trades: (Entry Price - Current Price) * Amount in BTC
+      // If you sold at a higher price than current price, you're profitable in BTC terms
+      const btcValue = trade.amount * ((trade.entryPrice - currentPrice) / currentPrice)
+      return {
+        value: btcValue,
+        unit: 'BTC'
+      }
+    }
+  }
+
+  const calculateRealizedPnL = (
+    trade: Trade, 
+    closePrice: number, 
+    closeAmount: number
+  ): { value: number; unit: 'USD' | 'BTC' } => {
+    if (trade.type === 'Buy') {
+      // For Buy trades: (Close Price - Entry Price) * Close Amount in USD
+      const pnlValue = (closePrice - trade.entryPrice) * closeAmount
+      return {
+        value: pnlValue,
+        unit: 'USD'
+      }
+    } else {
+      // For Sell trades: (Entry Price - Close Price) * Close Amount in BTC
+      const btcValue = closeAmount * ((trade.entryPrice - closePrice) / closePrice)
+      return {
+        value: btcValue,
+        unit: 'BTC'
+      }
+    }
+  }
 
   const fetchTrades = async () => {
     try {
@@ -480,7 +391,6 @@ export default function Dashboard() {
 
       if (error) throw error
 
-      // Convert the data format from database to frontend format
       const formattedTrades = data.map(trade => ({
         id: trade.id,
         type: trade.type as 'Buy' | 'Sell',
@@ -496,25 +406,9 @@ export default function Dashboard() {
       setTrades(formattedTrades)
     } catch (error) {
       console.error('Error fetching trades:', error)
-      // Add proper error handling/notification here
     }
   }
 
-  // Update P&L for all open trades when BTC price changes
-  useEffect(() => {
-    if (currentBtcPrice > 0) {
-      setTrades(prevTrades => 
-        prevTrades.map(trade => ({
-          ...trade,
-          unrealizedPnL: trade.status === 'Open' ? 
-            calculateUnrealizedPnL(trade, currentBtcPrice) : 
-            trade.unrealizedPnL
-        }))
-      )
-    }
-  }, [currentBtcPrice])
-
-  // Update handleNewTrade to save to Supabase
   const handleNewTrade = async (formData: TradeForm) => {
     const newTrade: Trade = {
       id: Date.now(),
@@ -531,10 +425,10 @@ export default function Dashboard() {
     // Calculate initial unrealized P&L
     if (currentBtcPrice > 0) {
       newTrade.unrealizedPnL = calculateUnrealizedPnL(newTrade, currentBtcPrice)
+      console.log('New Trade P&L:', newTrade.unrealizedPnL) // Debug log
     }
 
     try {
-      // Insert into Supabase
       const { error } = await supabase
         .from('trades')
         .insert({
@@ -551,99 +445,75 @@ export default function Dashboard() {
 
       if (error) throw error
 
-      // Update local state
       setTrades(prevTrades => [...prevTrades, newTrade])
       setOpenNewTrade(false)
     } catch (error) {
       console.error('Error creating trade:', error)
-      // Add proper error handling/notification here
     }
   }
 
-  // Update handleCloseTrade to save to Supabase
-  const handleCloseTrade = async (tradeId: number, closeData: CloseTradeForm) => {
-    try {
-      const updatedTrades = trades.map(trade => {
-        if (trade.id === tradeId) {
-          const closePrice = Number(closeData.closePrice)
-          const closeAmount = Number(closeData.closeAmount)
-          
-          let realizedPnL = calculateRealizedPnL(trade, closePrice, closeAmount)
-          
-          // If closing partial amount
-          if (closeAmount < trade.amount) {
-            const updatedTrade = {
-              ...trade,
-              amount: trade.amount - closeAmount,
-              realizedPnL,
-              unrealizedPnL: calculateUnrealizedPnL(
-                { ...trade, amount: trade.amount - closeAmount },
-                currentBtcPrice
-              )
-            }
-
-            // Update in Supabase
-            supabase
-              .from('trades')
-              .update({
-                amount: updatedTrade.amount,
-                realized_pnl: updatedTrade.realizedPnL,
-                unrealized_pnl: updatedTrade.unrealizedPnL,
-              })
-              .eq('id', tradeId)
-
-            return updatedTrade
-          }
-
-          // If closing entire position
-          const closedTrade = {
-            ...trade,
-            status: 'Closed' as const,
-            realizedPnL,
-            unrealizedPnL: null
-          }
-
-          // Update in Supabase
-          supabase
-            .from('trades')
-            .update({
-              status: closedTrade.status,
-              realized_pnl: closedTrade.realizedPnL,
-              unrealized_pnl: closedTrade.unrealizedPnL,
-            })
-            .eq('id', tradeId)
-
-          return closedTrade
-        }
-        return trade
-      })
-
-      setTrades(updatedTrades)
-      setOpenCloseTrade(false)
-      setTradeToClose(null)
-    } catch (error) {
-      console.error('Error closing trade:', error)
-      // Add proper error handling/notification here
-    }
-  }
-
-  // Update handleDeleteTrade to delete from Supabase
-  const handleDeleteTrade = async (tradeId: number) => {
+  const handleDeleteTrade = (tradeId: number) => {
     if (window.confirm('Are you sure you want to delete this trade?')) {
-      try {
-        const { error } = await supabase
-          .from('trades')
-          .delete()
-          .eq('id', tradeId)
-
-        if (error) throw error
-
-        setTrades(prevTrades => prevTrades.filter(trade => trade.id !== tradeId))
-      } catch (error) {
-        console.error('Error deleting trade:', error)
-        // Add proper error handling/notification here
-      }
+      setTrades(prevTrades => prevTrades.filter(trade => trade.id !== tradeId))
     }
+  }
+
+  const handleCloseTrade = (tradeId: number, closeData: { closePrice: string; closeAmount: string }) => {
+    setTrades(prevTrades => prevTrades.map(trade => {
+      if (trade.id === tradeId) {
+        const closePrice = Number(closeData.closePrice)
+        const closeAmount = Number(closeData.closeAmount)
+        
+        // Calculate realized P&L based on trade type
+        let realizedPnL: { value: number; unit: 'USD' | 'BTC' }
+        if (trade.type === 'Buy') {
+          realizedPnL = {
+            value: (closePrice - trade.entryPrice) * closeAmount,
+            unit: 'USD'
+          }
+        } else {
+          const initialCashValue = trade.entryPrice * closeAmount
+          const finalCashValue = closePrice * closeAmount
+          const btcDifference = (initialCashValue - finalCashValue) / closePrice
+          realizedPnL = {
+            value: btcDifference,
+            unit: 'BTC'
+          }
+        }
+
+        // If closing partial amount
+        if (closeAmount < trade.amount) {
+          const remainingAmount = trade.amount - closeAmount
+          return {
+            ...trade,
+            amount: remainingAmount,
+            // Add current unrealized P&L to realized P&L for the closed portion
+            realizedPnL: trade.realizedPnL ? {
+              value: trade.realizedPnL.value + realizedPnL.value,
+              unit: realizedPnL.unit
+            } : realizedPnL,
+            // Recalculate unrealized P&L for remaining position
+            unrealizedPnL: calculateUnrealizedPnL(
+              { ...trade, amount: remainingAmount },
+              currentBtcPrice
+            )
+          }
+        }
+
+        // If closing entire position
+        return {
+          ...trade,
+          status: 'Closed',
+          // Convert current unrealized P&L to realized P&L
+          realizedPnL: trade.unrealizedPnL ?? realizedPnL,
+          unrealizedPnL: null
+        }
+      }
+      return trade
+    }))
+    
+    setOpenCloseTrade(false)
+    setTradeToClose(null)
   }
 
   const columns: GridColDef[] = [
@@ -696,54 +566,52 @@ export default function Dashboard() {
       headerName: 'Unrealized P&L',
       width: 160,
       renderCell: (params: GridRenderCellParams) => {
-        if (!params.value || params.row.status !== 'Open') return '-'
+        if (!params.row.unrealizedPnL || params.row.status !== 'Open') return '-'
         
-        const pnl = params.value as { value: number; unit: 'USD' | 'BTC' }
+        const pnl = params.row.unrealizedPnL
         const isPositive = pnl.value >= 0
-        
-        let formattedValue = ''
-        if (pnl.unit === 'USD') {
-          formattedValue = `$${pnl.value.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          })}`
-        } else {
-          formattedValue = `${pnl.value.toFixed(4)} BTC`
-        }
+        const formattedValue = pnl.unit === 'USD'
+          ? `$${Math.abs(pnl.value).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })}`
+          : `${Math.abs(pnl.value).toFixed(8)} BTC`
 
         return (
-          <Typography color={isPositive ? 'success.main' : 'error.main'}>
-            {isPositive ? '+' : ''}{formattedValue}
+          <Typography 
+            color={isPositive ? 'success.main' : 'error.main'}
+            sx={{ fontWeight: 'medium' }}
+          >
+            {isPositive ? '+' : '-'}{formattedValue}
           </Typography>
         )
-      },
+      }
     },
     {
       field: 'realizedPnL',
       headerName: 'Realized P&L',
       width: 160,
       renderCell: (params: GridRenderCellParams) => {
-        if (!params.value) return '-'
+        if (!params.row.realizedPnL) return '-'
         
-        const pnl = params.value as { value: number; unit: 'USD' | 'BTC' }
+        const pnl = params.row.realizedPnL
         const isPositive = pnl.value >= 0
-        
-        let formattedValue = ''
-        if (pnl.unit === 'USD') {
-          formattedValue = `$${pnl.value.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          })}`
-        } else {
-          formattedValue = `${pnl.value.toFixed(4)} BTC`
-        }
+        const formattedValue = pnl.unit === 'USD'
+          ? `$${Math.abs(pnl.value).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })}`
+          : `${Math.abs(pnl.value).toFixed(8)} BTC`
 
         return (
-          <Typography color={isPositive ? 'success.main' : 'error.main'}>
-            {isPositive ? '+' : ''}{formattedValue}
+          <Typography 
+            color={isPositive ? 'success.main' : 'error.main'}
+            sx={{ fontWeight: 'medium' }}
+          >
+            {isPositive ? '+' : '-'}{formattedValue}
           </Typography>
         )
-      },
+      }
     },
     {
       field: 'status',
@@ -789,18 +657,74 @@ export default function Dashboard() {
     },
   ]
 
+  // Calculate cumulative P&L
+  const calculateCumulativePnL = () => {
+    let totalUnrealizedBTC = 0
+    let totalUnrealizedUSD = 0
+    let totalRealizedBTC = 0
+    let totalRealizedUSD = 0
+
+    trades.forEach(trade => {
+      // Sum up unrealized P&L
+      if (trade.unrealizedPnL && trade.status === 'Open') {
+        if (trade.unrealizedPnL.unit === 'BTC') {
+          totalUnrealizedBTC += trade.unrealizedPnL.value
+        } else {
+          totalUnrealizedUSD += trade.unrealizedPnL.value
+        }
+      }
+
+      // Sum up realized P&L
+      if (trade.realizedPnL) {
+        if (trade.realizedPnL.unit === 'BTC') {
+          totalRealizedBTC += trade.realizedPnL.value
+        } else {
+          totalRealizedUSD += trade.realizedPnL.value
+        }
+      }
+    })
+
+    return {
+      unrealized: {
+        btc: totalUnrealizedBTC,
+        usd: totalUnrealizedUSD
+      },
+      realized: {
+        btc: totalRealizedBTC,
+        usd: totalRealizedUSD
+      }
+    }
+  }
+
+  const cumulativePnL = calculateCumulativePnL()
+
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: 'background.default', minHeight: '100vh', p: 3 }}>
+    <Box sx={{ 
+      flexGrow: 1, 
+      bgcolor: 'background.default', 
+      minHeight: '100vh', 
+      p: 3,
+    }}>
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} md={4}>
           <BitcoinPriceCard price={currentBtcPrice} priceChange={priceChange} />
         </Grid>
         <Grid item xs={12} md={4}>
-          <PnLSummaryCard trades={trades} />
+          <PnLSummaryCard
+            title="Unrealized P&L"
+            btcValue={cumulativePnL.unrealized.btc}
+            usdValue={cumulativePnL.unrealized.usd}
+          />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <PnLSummaryCard
+            title="Realized P&L"
+            btcValue={cumulativePnL.realized.btc}
+            usdValue={cumulativePnL.realized.usd}
+          />
         </Grid>
       </Grid>
 
-      {/* Trades Table with New Trade Button */}
       <Paper 
         sx={{ 
           p: 3, 
@@ -868,3 +792,4 @@ export default function Dashboard() {
     </Box>
   )
 }
+
