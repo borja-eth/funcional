@@ -27,6 +27,7 @@ import {
   DataGrid,
   GridColDef,
   GridRenderCellParams,
+  GridValueGetterParams,
 } from '@mui/x-data-grid'
 import CloseIcon from '@mui/icons-material/Close'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
@@ -410,33 +411,40 @@ export default function Dashboard() {
       field: 'entryDate',
       headerName: 'Entry Date',
       width: 130,
-      valueFormatter: (params: { value: Date | string | null }) => {
-        if (!params.value) return ''
-        return new Date(params.value).toLocaleDateString()
+      type: 'date',
+      valueGetter: (params: GridValueGetterParams) => {
+        return params.row.entryDate
+      },
+      valueFormatter: ({ value }) => {
+        if (!value) return ''
+        return new Date(value).toLocaleDateString()
       }
     },
     {
       field: 'entryPrice',
       headerName: 'Entry Price',
       width: 130,
-      renderCell: (params: GridRenderCellParams) => {
-        if (!params.value) return '-'
-        return `$${Number(params.value).toLocaleString()}`
+      type: 'number',
+      valueGetter: (params: GridValueGetterParams) => {
+        return params.row.entryPrice
       },
+      valueFormatter: ({ value }) => {
+        if (!value) return '-'
+        return `$${Number(value).toLocaleString()}`
+      }
     },
     {
       field: 'amount',
       headerName: 'Amount BTC',
       width: 130,
-      renderCell: (params: GridRenderCellParams) => {
-        if (!params.value) return '-'
-        return (
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {params.row.type === 'Sell' && '-'}
-            {Number(params.value).toFixed(4)} BTC
-          </Box>
-        )
+      type: 'number',
+      valueGetter: (params: GridValueGetterParams) => {
+        return params.row.amount
       },
+      valueFormatter: ({ value }) => {
+        if (!value) return '-'
+        return `${Number(value).toFixed(8)} BTC`
+      }
     },
     {
       field: 'unrealizedPnL',
