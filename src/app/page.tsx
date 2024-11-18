@@ -23,24 +23,16 @@ import {
   MenuItem,
   InputAdornment,
 } from '@mui/material'
-import { ResponsiveLine } from '@nivo/line';
 import {
   DataGrid,
   GridColDef,
   GridRenderCellParams,
 } from '@mui/x-data-grid'
-import EditIcon from '@mui/icons-material/Edit'
 import CloseIcon from '@mui/icons-material/Close'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
-import { useTheme } from '@mui/material/styles';
-import { format, differenceInHours, differenceInDays } from 'date-fns';
 import { 
-  ToggleButton, 
-  ToggleButtonGroup, 
-  Tabs, 
-  Tab, 
   Paper 
 } from '@mui/material';
 import PnLSummaryCard from '@/components/PnLSummaryCard'
@@ -458,62 +450,69 @@ export default function Dashboard() {
     }
   }
 
-  const handleCloseTrade = (tradeId: number, closeData: { closePrice: string; closeAmount: string }) => {
-    setTrades(prevTrades => prevTrades.map(trade => {
-      if (trade.id === tradeId) {
-        const closePrice = Number(closeData.closePrice)
-        const closeAmount = Number(closeData.closeAmount)
-        
-        // Calculate realized P&L based on trade type
-        let realizedPnL: { value: number; unit: 'USD' | 'BTC' }
-        if (trade.type === 'Buy') {
-          realizedPnL = {
-            value: (closePrice - trade.entryPrice) * closeAmount,
-            unit: 'USD'
-          }
-        } else {
-          const initialCashValue = trade.entryPrice * closeAmount
-          const finalCashValue = closePrice * closeAmount
-          const btcDifference = (initialCashValue - finalCashValue) / closePrice
-          realizedPnL = {
-            value: btcDifference,
-            unit: 'BTC'
-          }
-        }
+  const handleCloseTrade = async (tradeId: number, closeData: { closePrice: string; closeAmount: string }) => {
+    try {
+      const updatedTrades = trades.map(trade => {
+        if (trade.id === tradeId) {
+          const closePrice = Number(closeData.closePrice)
+          const closeAmount = Number(closeData.closeAmount)
+          
+          const realizedPnL = calculateRealizedPnL(trade, closePrice, closeAmount)
+          
+          if (closeAmount < trade.amount) {
+            // Partial close
+            const updatedTrade = {
+              ...trade,
+              amount: trade.amount - closeAmount,
+              realizedPnL,
+              unrealizedPnL: calculateUnrealizedPnL(
+                { ...trade, amount: trade.amount - closeAmount },
+                currentBtcPrice
+              )
+            }
 
-        // If closing partial amount
-        if (closeAmount < trade.amount) {
-          const remainingAmount = trade.amount - closeAmount
-          return {
-            ...trade,
-            amount: remainingAmount,
-            // Add current unrealized P&L to realized P&L for the closed portion
-            realizedPnL: trade.realizedPnL ? {
-              value: trade.realizedPnL.value + realizedPnL.value,
-              unit: realizedPnL.unit
-            } : realizedPnL,
-            // Recalculate unrealized P&L for remaining position
-            unrealizedPnL: calculateUnrealizedPnL(
-              { ...trade, amount: remainingAmount },
-              currentBtcPrice
-            )
+            // Update in Supabase
+            supabase
+              .from('trades')
+              .update({
+                amount: updatedTrade.amount,
+                realized_pnl: updatedTrade.realizedPnL,
+                unrealized_pnl: updatedTrade.unrealizedPnL,
+              })
+              .eq('id', tradeId)
+
+            return updatedTrade
+          } else {
+            // Full close
+            const closedTrade = {
+              ...trade,
+              status: 'Closed' as const,
+              realizedPnL,
+              unrealizedPnL: null
+            }
+
+            // Update in Supabase
+            supabase
+              .from('trades')
+              .update({
+                status: closedTrade.status,
+                realized_pnl: closedTrade.realizedPnL,
+                unrealized_pnl: closedTrade.unrealizedPnL,
+              })
+              .eq('id', tradeId)
+
+            return closedTrade
           }
         }
+        return trade
+      })
 
-        // If closing entire position
-        return {
-          ...trade,
-          status: 'Closed',
-          // Convert current unrealized P&L to realized P&L
-          realizedPnL: trade.unrealizedPnL ?? realizedPnL,
-          unrealizedPnL: null
-        }
-      }
-      return trade
-    }))
-    
-    setOpenCloseTrade(false)
-    setTradeToClose(null)
+      setTrades(updatedTrades)
+      setOpenCloseTrade(false)
+      setTradeToClose(null)
+    } catch (error) {
+      console.error('Error closing trade:', error)
+    }
   }
 
   const columns: GridColDef[] = [
