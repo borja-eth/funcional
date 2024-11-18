@@ -9,7 +9,7 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown'
 
 interface BitcoinPriceCardProps {
   price: number
-  priceChange: number | null
+  priceChange?: number
 }
 
 export default function BitcoinPriceCard({ price, priceChange }: BitcoinPriceCardProps) {
@@ -35,7 +35,7 @@ export default function BitcoinPriceCard({ price, priceChange }: BitcoinPriceCar
           ${price.toLocaleString()}
         </Typography>
 
-        {priceChange !== null && (
+        {typeof priceChange === 'number' && (
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             {priceChange >= 0 ? (
               <TrendingUpIcon color="success" sx={{ mr: 1 }} />
@@ -54,4 +54,4 @@ export default function BitcoinPriceCard({ price, priceChange }: BitcoinPriceCar
       </CardContent>
     </Card>
   )
-} 
+}

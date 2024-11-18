@@ -36,40 +36,8 @@ import {
   Paper 
 } from '@mui/material';
 import PnLSummaryCard from '@/components/PnLSummaryCard'
-
-// Bitcoin Price Card Component
-function BitcoinPriceCard({ price, priceChange }: { price: number, priceChange?: number }) {
-  return (
-    <Card sx={{ 
-      background: 'rgba(255, 255, 255, 0.05)',
-      borderRadius: 2,
-      height: '100%' 
-    }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <TrendingUpIcon sx={{ mr: 1 }} />
-          <Typography variant="h6" color="text.secondary">
-            Bitcoin Price
-          </Typography>
-        </Box>
-        <Typography variant="h4" component="div">
-          ${price?.toLocaleString() ?? 'Loading...'}
-        </Typography>
-        {priceChange && (
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              color: priceChange >= 0 ? 'success.main' : 'error.main',
-              mt: 1 
-            }}
-          >
-            {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}% (24h)
-          </Typography>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
+import CloseTradeModal from '@/components/CloseTradeModal'
+import BitcoinPriceCard from '@/components/BitcoinPriceCard'
 
 // Add this interface for the form
 interface TradeForm {
@@ -190,100 +158,6 @@ function NewTradeDialog({
   )
 }
 
-// Updated CloseTradeDialog component
-function CloseTradeDialog({ 
-  open, 
-  onClose, 
-  onSubmit,
-  currentBtcPrice 
-}: { 
-  open: boolean
-  onClose: () => void
-  onSubmit: (data: { closePrice: string, closeAmount: string }) => void
-  currentBtcPrice: number
-}) {
-  const [formData, setFormData] = useState({
-    closePrice: currentBtcPrice.toString(),
-    closeAmount: '',
-  })
-
-  // Reset form when dialog opens
-  useEffect(() => {
-    if (open) {
-      setFormData({
-        closePrice: currentBtcPrice.toString(),
-        closeAmount: '',
-      })
-    }
-  }, [open, currentBtcPrice])
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSubmit(formData)
-  }
-
-  return (
-    <Dialog 
-      open={open} 
-      onClose={onClose}
-      PaperProps={{
-        sx: {
-          background: '#1E1E1E',
-          borderRadius: 2,
-          minWidth: '400px',
-        }
-      }}
-    >
-      <form onSubmit={handleSubmit}>
-        <DialogTitle>Close Trade</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-            <TextField
-              label="Close Price"
-              type="number"
-              value={formData.closePrice}
-              onChange={(e) => setFormData({
-                ...formData,
-                closePrice: e.target.value
-              })}
-              InputProps={{
-                startAdornment: <InputAdornment position="start">$</InputAdornment>,
-              }}
-              required
-              inputProps={{ step: "0.01", min: "0" }}
-            />
-
-            <TextField
-              label="Close Amount"
-              type="number"
-              value={formData.closeAmount}
-              onChange={(e) => setFormData({
-                ...formData,
-                closeAmount: e.target.value
-              })}
-              InputProps={{
-                endAdornment: <InputAdornment position="end">BTC</InputAdornment>,
-              }}
-              required
-              inputProps={{ step: "0.0001", min: "0" }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button 
-            type="submit" 
-            variant="contained" 
-            startIcon={<CloseIcon />}
-          >
-            Close Trade
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
-  )
-}
-
 export default function Dashboard() {
   const [trades, setTrades] = useState<Trade[]>([])
   const [openNewTrade, setOpenNewTrade] = useState(false)
@@ -298,15 +172,17 @@ export default function Dashboard() {
       try {
         const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true')
         const data = await response.json()
+        
         setCurrentBtcPrice(data.bitcoin.usd)
-        setPriceChange(data.bitcoin.usd_24h_change)
+        setPriceChange(data.bitcoin.usd_24h_change || null)
       } catch (error) {
         console.error('Error fetching Bitcoin price:', error)
+        setPriceChange(null)
       }
     }
 
     fetchBitcoinPrice()
-    const interval = setInterval(fetchBitcoinPrice, 60000) // Update every minute
+    const interval = setInterval(fetchBitcoinPrice, 60000)
 
     return () => clearInterval(interval)
   }, [])
@@ -450,12 +326,14 @@ export default function Dashboard() {
     }
   }
 
-  const handleCloseTrade = async (tradeId: number, closeData: { closePrice: string; closeAmount: string }) => {
+  const handleCloseTrade = async (data: { closePrice: string; closeAmount: string }) => {
+    if (!tradeToClose) return
+
     try {
       const updatedTrades = trades.map(trade => {
-        if (trade.id === tradeId) {
-          const closePrice = Number(closeData.closePrice)
-          const closeAmount = Number(closeData.closeAmount)
+        if (trade.id === tradeToClose.id) {
+          const closePrice = Number(data.closePrice)
+          const closeAmount = Number(data.closeAmount)
           
           const realizedPnL = calculateRealizedPnL(trade, closePrice, closeAmount)
           
@@ -479,7 +357,7 @@ export default function Dashboard() {
                 realized_pnl: updatedTrade.realizedPnL,
                 unrealized_pnl: updatedTrade.unrealizedPnL,
               })
-              .eq('id', tradeId)
+              .eq('id', tradeToClose.id)
 
             return updatedTrade
           } else {
@@ -499,7 +377,7 @@ export default function Dashboard() {
                 realized_pnl: closedTrade.realizedPnL,
                 unrealized_pnl: closedTrade.unrealizedPnL,
               })
-              .eq('id', tradeId)
+              .eq('id', tradeToClose.id)
 
             return closedTrade
           }
@@ -532,7 +410,7 @@ export default function Dashboard() {
       field: 'entryDate',
       headerName: 'Entry Date',
       width: 130,
-      valueFormatter: (params) => {
+      valueFormatter: (params: { value: Date | string | null }) => {
         if (!params.value) return ''
         return new Date(params.value).toLocaleDateString()
       }
@@ -685,12 +563,12 @@ export default function Dashboard() {
 
     return {
       unrealized: {
-        btc: totalUnrealizedBTC,
-        usd: totalUnrealizedUSD
+        btc: totalUnrealizedBTC || 0,
+        usd: totalUnrealizedUSD || 0
       },
       realized: {
-        btc: totalRealizedBTC,
-        usd: totalRealizedUSD
+        btc: totalRealizedBTC || 0,
+        usd: totalRealizedUSD || 0
       }
     }
   }
@@ -706,7 +584,10 @@ export default function Dashboard() {
     }}>
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} md={4}>
-          <BitcoinPriceCard price={currentBtcPrice} priceChange={priceChange} />
+          <BitcoinPriceCard 
+            price={currentBtcPrice} 
+            priceChange={priceChange ?? undefined}
+          />
         </Grid>
         <Grid item xs={12} md={4}>
           <PnLSummaryCard
@@ -777,14 +658,14 @@ export default function Dashboard() {
           currentBtcPrice={currentBtcPrice}
         />
 
-        <CloseTradeDialog
+        <CloseTradeModal
           open={openCloseTrade}
           trade={tradeToClose}
           onClose={() => {
             setOpenCloseTrade(false)
             setTradeToClose(null)
           }}
-          onSubmit={(data) => handleCloseTrade(tradeToClose!.id, data)}
+          onSubmit={handleCloseTrade}
           currentBtcPrice={currentBtcPrice}
         />
       </Paper>
