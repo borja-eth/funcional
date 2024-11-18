@@ -9,8 +9,6 @@ import {
   IconButton,
   Chip,
   Grid,
-  Card,
-  CardContent,
   Button,
   Dialog,
   DialogTitle,
@@ -27,10 +25,8 @@ import {
   DataGrid,
   GridColDef,
   GridRenderCellParams,
-  GridValueGetterParams,
 } from '@mui/x-data-grid'
 import CloseIcon from '@mui/icons-material/Close'
-import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { 
@@ -159,9 +155,9 @@ function NewTradeDialog({
   )
 }
 
-interface GridFormatterParams {
-  value: any;
-  row: any;
+interface GridFormatterParams<T = unknown> {
+  value: T;
+  row: Trade;
 }
 
 export default function Dashboard() {
@@ -417,7 +413,7 @@ export default function Dashboard() {
       headerName: 'Entry Date',
       width: 130,
       type: 'date',
-      valueFormatter: (params: GridFormatterParams) => {
+      valueFormatter: (params: GridFormatterParams<Date | string>) => {
         if (!params.value) return ''
         return new Date(params.value).toLocaleDateString()
       }
@@ -427,9 +423,9 @@ export default function Dashboard() {
       headerName: 'Entry Price',
       width: 130,
       type: 'number',
-      valueFormatter: (params: GridFormatterParams) => {
+      valueFormatter: (params: GridFormatterParams<number>) => {
         if (!params.value) return '-'
-        return `$${Number(params.value).toLocaleString()}`
+        return `$${params.value.toLocaleString()}`
       }
     },
     {
@@ -437,9 +433,9 @@ export default function Dashboard() {
       headerName: 'Amount BTC',
       width: 130,
       type: 'number',
-      valueFormatter: (params: GridFormatterParams) => {
+      valueFormatter: (params: GridFormatterParams<number>) => {
         if (!params.value) return '-'
-        return `${Number(params.value).toFixed(8)} BTC`
+        return `${params.value.toFixed(8)} BTC`
       }
     },
     {

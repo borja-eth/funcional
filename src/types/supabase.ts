@@ -14,8 +14,6 @@ export interface Trade {
   } | null
   status: 'Open' | 'Closed'
   cashValue?: number
-  createdAt?: Date
-  updatedAt?: Date
 }
 
 export interface TradeForm {
