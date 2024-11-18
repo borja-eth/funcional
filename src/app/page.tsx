@@ -159,6 +159,11 @@ function NewTradeDialog({
   )
 }
 
+interface GridFormatterParams {
+  value: any;
+  row: any;
+}
+
 export default function Dashboard() {
   const [trades, setTrades] = useState<Trade[]>([])
   const [openNewTrade, setOpenNewTrade] = useState(false)
@@ -412,12 +417,9 @@ export default function Dashboard() {
       headerName: 'Entry Date',
       width: 130,
       type: 'date',
-      valueGetter: (params: GridValueGetterParams) => {
-        return params.row.entryDate
-      },
-      valueFormatter: ({ value }) => {
-        if (!value) return ''
-        return new Date(value).toLocaleDateString()
+      valueFormatter: (params: GridFormatterParams) => {
+        if (!params.value) return ''
+        return new Date(params.value).toLocaleDateString()
       }
     },
     {
@@ -425,12 +427,9 @@ export default function Dashboard() {
       headerName: 'Entry Price',
       width: 130,
       type: 'number',
-      valueGetter: (params: GridValueGetterParams) => {
-        return params.row.entryPrice
-      },
-      valueFormatter: ({ value }) => {
-        if (!value) return '-'
-        return `$${Number(value).toLocaleString()}`
+      valueFormatter: (params: GridFormatterParams) => {
+        if (!params.value) return '-'
+        return `$${Number(params.value).toLocaleString()}`
       }
     },
     {
@@ -438,12 +437,9 @@ export default function Dashboard() {
       headerName: 'Amount BTC',
       width: 130,
       type: 'number',
-      valueGetter: (params: GridValueGetterParams) => {
-        return params.row.amount
-      },
-      valueFormatter: ({ value }) => {
-        if (!value) return '-'
-        return `${Number(value).toFixed(8)} BTC`
+      valueFormatter: (params: GridFormatterParams) => {
+        if (!params.value) return '-'
+        return `${Number(params.value).toFixed(8)} BTC`
       }
     },
     {
