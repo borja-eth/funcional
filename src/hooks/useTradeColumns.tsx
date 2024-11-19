@@ -42,20 +42,32 @@ export const useTradeColumns = ({ onDeleteTrade, onCloseTrade }: UseTradeColumns
       field: 'entryPrice',
       headerName: 'Entry Price',
       width: 130,
-      type: 'number',
-      valueFormatter: (params: { value: number | null }) => {
-        if (!params.value) return '-'
-        return `$${params.value.toLocaleString()}`
+      renderCell: (params: GridRenderCellParams) => {
+        const value = params.value as number
+        return (
+          <Typography>
+            ${value.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })}
+          </Typography>
+        )
       }
     },
     {
       field: 'amount',
       headerName: 'Amount BTC',
       width: 130,
-      type: 'number',
-      valueFormatter: (params: { value: number | null }) => {
-        if (!params.value) return '-'
-        return `${params.value.toFixed(8)} BTC`
+      renderCell: (params: GridRenderCellParams) => {
+        const value = params.value as number
+        return (
+          <Typography>
+            {value.toLocaleString(undefined, {
+              minimumFractionDigits: 8,
+              maximumFractionDigits: 8
+            })} BTC
+          </Typography>
+        )
       }
     },
     {
