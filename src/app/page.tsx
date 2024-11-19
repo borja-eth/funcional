@@ -6,7 +6,7 @@ import { SummaryCards } from '@/components/SummaryCards'
 import { TradeModals } from '@/components/TradeModals'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { useTradeModals } from '@/hooks/useTradeModals'
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 
 export default function Dashboard() {
   const { trades, handleNewTrade, handleCloseTrade, handleDeleteTrade, cumulativePnL, setTradeToClose } = useTrades()

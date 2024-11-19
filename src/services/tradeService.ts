@@ -10,6 +10,7 @@ export const tradeService = {
 
     if (error) throw error
 
+    
     return data.map(trade => ({
       id: trade.id,
       type: trade.type as 'Buy' | 'Sell',
