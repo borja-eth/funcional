@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Box, Grid } from '@mui/material'
 import { TradeTable } from '@/components/TradeTable/TradeTable'
 import { NewTradeDialog } from '@/components/NewTradeDialog'

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Trade, TradeForm } from '@/types/supabase'
+import type { Trade } from '@/types/supabase'
 
 export const tradeService = {
   fetchTrades: async () => {
