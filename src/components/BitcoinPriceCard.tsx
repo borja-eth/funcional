@@ -9,7 +9,7 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown'
 
 interface BitcoinPriceCardProps {
   price: number
-  priceChange?: number
+  priceChange?: number | null
 }
 
 export default function BitcoinPriceCard({ price, priceChange }: BitcoinPriceCardProps) {
