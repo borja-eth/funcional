@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { tradeService } from '@/services/tradeService'
 import type { Trade, TradeForm, CloseTradeForm } from '@/types/supabase'
 import useBitcoinPrice from './useBitcoinPrice'
@@ -11,27 +11,7 @@ export default function useTrades() {
     unrealized: { btc: 0, usd: 0 }
   })
 
-  useEffect(() => {
-    fetchTrades()
-  }, [])
-
-  useEffect(() => {
-    if (trades.length > 0) {
-      calculatePnL(trades)
-    }
-  }, [currentPrice, trades])
-
-  const fetchTrades = async () => {
-    try {
-      const fetchedTrades = await tradeService.fetchTrades()
-      setTrades(fetchedTrades)
-      calculatePnL(fetchedTrades)
-    } catch (error) {
-      console.error('Error fetching trades:', error)
-    }
-  }
-
-  const calculatePnL = (trades: Trade[]) => {
+  const calculatePnL = useCallback((trades: Trade[]) => {
     const cumulativePnL = {
       realized: { btc: 0, usd: 0 },
       unrealized: { btc: 0, usd: 0 }
@@ -39,7 +19,6 @@ export default function useTrades() {
 
     trades.forEach(trade => {
       if (trade.status === 'Open') {
-        // Calcular P&L no realizado para operaciones abiertas
         const currentValue = trade.amount * currentPrice
         const entryValue = trade.amount * trade.entryPrice
         const unrealizedPnL = trade.type === 'Buy' 
@@ -54,7 +33,6 @@ export default function useTrades() {
         cumulativePnL.unrealized.usd += unrealizedPnL
         cumulativePnL.unrealized.btc += trade.amount
       } else if (trade.realizedPnL) {
-        // Acumular P&L realizado para operaciones cerradas
         cumulativePnL.realized.usd += trade.realizedPnL.value
         cumulativePnL.realized.btc += trade.amount
       }
@@ -62,7 +40,27 @@ export default function useTrades() {
 
     setCumulativePnL(cumulativePnL)
     return trades
-  }
+  }, [currentPrice])
+
+  const fetchTrades = useCallback(async () => {
+    try {
+      const fetchedTrades = await tradeService.fetchTrades()
+      setTrades(fetchedTrades)
+      calculatePnL(fetchedTrades)
+    } catch (error) {
+      console.error('Error fetching trades:', error)
+    }
+  }, [calculatePnL])
+
+  useEffect(() => {
+    fetchTrades()
+  }, [fetchTrades])
+
+  useEffect(() => {
+    if (trades.length > 0) {
+      calculatePnL(trades)
+    }
+  }, [currentPrice, trades, calculatePnL])
 
   const handleNewTrade = async (data: TradeForm) => {
     try {
@@ -96,9 +94,7 @@ export default function useTrades() {
 
   const handleDeleteTrade = async (id: number) => {
     try {
-      // Since deleteTrade doesn't exist on tradeService, we'll need to handle deletion differently
-      // This is a placeholder - you'll need to implement the actual delete functionality in tradeService
-      console.warn('Delete trade functionality not implemented')
+      await tradeService.deleteTrade(id)
       await fetchTrades()
     } catch (error) {
       console.error('Error deleting trade:', error)

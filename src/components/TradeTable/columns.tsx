@@ -1,8 +1,10 @@
-import { GridColDef, GridRenderCellParams} from '@mui/x-data-grid'
+import { GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 import { Chip, Typography, Box, IconButton } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import CloseIcon from '@mui/icons-material/Close'
 import type { Trade } from '@/types/supabase'
+
+type TradeGridParams = GridRenderCellParams<unknown, Trade>
 
 export const getColumns = (
   handleDeleteTrade: (id: number) => void,
@@ -51,7 +53,7 @@ export const getColumns = (
     field: 'unrealizedPnL',
     headerName: 'Unrealized P&L',
     width: 160,
-    renderCell: (params: GridRenderCellParams<any, Trade>) => {
+    renderCell: (params: TradeGridParams) => {
       if (!params.row.unrealizedPnL || params.row.status !== 'Open') return '-'
       
       const pnl = params.row.unrealizedPnL
@@ -77,7 +79,7 @@ export const getColumns = (
     field: 'realizedPnL',
     headerName: 'Realized P&L',
     width: 160,
-    renderCell: (params: GridRenderCellParams<any, Trade>) => {
+    renderCell: (params: TradeGridParams) => {
       if (!params.row.realizedPnL) return '-'
       
       const pnl = params.row.realizedPnL
@@ -115,7 +117,7 @@ export const getColumns = (
     field: 'actions',
     headerName: 'Actions',
     width: 160,
-    renderCell: (params: GridRenderCellParams<any, Trade>) => (
+    renderCell: (params: TradeGridParams) => (
       <Box>
         <IconButton
           size="small"
