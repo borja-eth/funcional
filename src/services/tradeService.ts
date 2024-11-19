@@ -42,6 +42,21 @@ export const tradeService = {
     return trade
   },
 
+  updateTrade: async (id: number, trade: Trade) => {
+    const { error } = await supabase
+      .from('trades')
+      .update({
+        status: trade.status,
+        amount: trade.amount,
+        realized_pnl: trade.realizedPnL,
+        unrealized_pnl: trade.unrealizedPnL,
+      })
+      .eq('id', id)
+
+    if (error) throw error
+    return trade
+  },
+
   deleteTrade: async (id: number) => {
     const { error } = await supabase
       .from('trades')

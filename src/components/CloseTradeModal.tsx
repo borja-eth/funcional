@@ -7,7 +7,7 @@ import {
   TextField,
   Box,
 } from '@mui/material'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Trade } from '@/types/supabase'
 
 interface CloseTradeModalProps {
@@ -25,14 +25,20 @@ export default function CloseTradeModal({
   onSubmit, 
   currentBtcPrice 
 }: CloseTradeModalProps) {
-  const [closePrice, setClosePrice] = useState(currentBtcPrice.toString())
-  const [closeAmount, setCloseAmount] = useState('')
+  const [closePrice, setClosePrice] = useState(() => currentBtcPrice.toString())
+  const [closeAmount, setCloseAmount] = useState(() => trade?.amount.toString() ?? '')
+
+  useEffect(() => {
+    if (open) {
+      setClosePrice(currentBtcPrice.toString())
+      setCloseAmount(trade?.amount.toString() ?? '')
+    }
+  }, [open, currentBtcPrice, trade])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     await onSubmit({ closePrice, closeAmount })
-    setClosePrice(currentBtcPrice.toString())
-    setCloseAmount('')
+    onClose()
   }
 
   return (

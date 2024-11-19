@@ -4,20 +4,18 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import CloseIcon from '@mui/icons-material/Close'
 import type { Trade } from '@/types/supabase'
 
-type TradeGridParams = GridRenderCellParams<unknown, Trade>
-
 export const getColumns = (
   handleDeleteTrade: (id: number) => void,
   handleCloseTrade: (trade: Trade) => void
-): GridColDef[] => [
+): GridColDef<Trade>[] => [
   {
     field: 'type',
     headerName: 'Type',
     width: 100,
-    renderCell: (params: GridRenderCellParams) => (
+    renderCell: (params: GridRenderCellParams<Trade>) => (
       <Chip
-        label={params.value}
-        color={params.value === 'Buy' ? 'success' : 'error'}
+        label={params.row.type}
+        color={params.row.type === 'Buy' ? 'success' : 'error'}
         size="small"
       />
     ),
@@ -26,34 +24,31 @@ export const getColumns = (
     field: 'entryDate',
     headerName: 'Entry Date',
     width: 130,
-    renderCell: (params: GridRenderCellParams) => {
-      if (!params.value) return ''
-      return new Date(params.value).toLocaleDateString()
+    renderCell: (params: GridRenderCellParams<Trade>) => {
+      return new Date(params.row.entryDate).toLocaleDateString()
     }
   },
   {
     field: 'entryPrice',
     headerName: 'Entry Price',
     width: 130,
-    renderCell: (params: GridRenderCellParams) => {
-      if (!params.value) return '-'
-      return `$${params.value.toLocaleString()}`
+    renderCell: (params: GridRenderCellParams<Trade>) => {
+      return `$${params.row.entryPrice.toLocaleString()}`
     }
   },
   {
     field: 'amount',
     headerName: 'Amount BTC',
     width: 130,
-    renderCell: (params: GridRenderCellParams) => {
-      if (!params.value) return '-'
-      return `${params.value.toFixed(8)} BTC`
+    renderCell: (params: GridRenderCellParams<Trade>) => {
+      return `${params.row.amount.toFixed(8)} BTC`
     }
   },
   {
     field: 'unrealizedPnL',
     headerName: 'Unrealized P&L',
     width: 160,
-    renderCell: (params: TradeGridParams) => {
+    renderCell: (params: GridRenderCellParams<Trade>) => {
       if (!params.row.unrealizedPnL || params.row.status !== 'Open') return '-'
       
       const pnl = params.row.unrealizedPnL
@@ -79,7 +74,7 @@ export const getColumns = (
     field: 'realizedPnL',
     headerName: 'Realized P&L',
     width: 160,
-    renderCell: (params: TradeGridParams) => {
+    renderCell: (params: GridRenderCellParams<Trade>) => {
       if (!params.row.realizedPnL) return '-'
       
       const pnl = params.row.realizedPnL
@@ -105,10 +100,10 @@ export const getColumns = (
     field: 'status',
     headerName: 'Status',
     width: 120,
-    renderCell: (params: GridRenderCellParams) => (
+    renderCell: (params: GridRenderCellParams<Trade>) => (
       <Chip
-        label={params.value}
-        color={params.value === 'Open' ? 'primary' : 'default'}
+        label={params.row.status}
+        color={params.row.status === 'Open' ? 'primary' : 'default'}
         size="small"
       />
     ),
@@ -117,7 +112,7 @@ export const getColumns = (
     field: 'actions',
     headerName: 'Actions',
     width: 160,
-    renderCell: (params: TradeGridParams) => (
+    renderCell: (params: GridRenderCellParams<Trade>) => (
       <Box>
         <IconButton
           size="small"

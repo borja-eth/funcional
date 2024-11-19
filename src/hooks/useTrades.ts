@@ -10,6 +10,7 @@ export default function useTrades() {
     realized: { btc: 0, usd: 0 },
     unrealized: { btc: 0, usd: 0 }
   })
+  const [tradeToClose, setTradeToClose] = useState<Trade | null>(null)
 
   const calculatePnL = useCallback((trades: Trade[]) => {
     const cumulativePnL = {
@@ -88,8 +89,35 @@ export default function useTrades() {
   }
 
   const handleCloseTrade = async (data: CloseTradeForm) => {
-    // Implementation for closing trade
-    console.log('Closing trade with data:', data)
+    try {
+      if (!tradeToClose) return
+
+      const closePrice = Number(data.closePrice)
+      const closeAmount = Number(data.closeAmount)
+      const entryValue = closeAmount * tradeToClose.entryPrice
+      const closeValue = closeAmount * closePrice
+      
+      const realizedPnL = tradeToClose.type === 'Buy' 
+        ? closeValue - entryValue 
+        : entryValue - closeValue
+
+      const updatedTrade: Trade = {
+        ...tradeToClose,
+        status: 'Closed',
+        amount: closeAmount,
+        realizedPnL: {
+          value: realizedPnL,
+          unit: 'USD' as const
+        },
+        unrealizedPnL: null
+      }
+
+      await tradeService.updateTrade(updatedTrade.id, updatedTrade)
+      await fetchTrades()
+      setTradeToClose(null)
+    } catch (error) {
+      console.error('Error closing trade:', error)
+    }
   }
 
   const handleDeleteTrade = async (id: number) => {
@@ -106,6 +134,7 @@ export default function useTrades() {
     handleNewTrade,
     handleCloseTrade,
     handleDeleteTrade,
-    cumulativePnL
+    cumulativePnL,
+    setTradeToClose
   }
-} 
+}
