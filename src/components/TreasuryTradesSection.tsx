@@ -13,7 +13,6 @@ interface TreasuryTradesSectionProps {
 export default function TreasuryTradesSection({
   trades,
   columns,
-  openNewTrade,
   setOpenNewTrade
 }: TreasuryTradesSectionProps) {
   return (

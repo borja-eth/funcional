@@ -69,7 +69,7 @@ export class TradeService {
     return newTrade
   }
 
-  async closeTrade(trade: Trade, formData: CloseTradeForm, currentBtcPrice: number): Promise<Trade[]> {
+  async closeTrade(trade: Trade, formData: CloseTradeForm): Promise<Trade[]> {
     const closePrice = Number(formData.closePrice)
     const closeAmount = Number(formData.closeAmount)
 

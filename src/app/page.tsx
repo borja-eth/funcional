@@ -1,8 +1,6 @@
 'use client'
 
-import { Box, Button, Typography, Grid, Paper } from '@mui/material'
-import AddIcon from '@mui/icons-material/Add'
-import { DataGrid } from '@mui/x-data-grid'
+import { Box, Grid } from '@mui/material'
 
 // Hooks personalizados
 import { useBitcoinPrice } from '@/hooks/useBitcoinPrice'
@@ -93,4 +91,3 @@ export default function Dashboard() {
     </Box>
   )
 }
-
