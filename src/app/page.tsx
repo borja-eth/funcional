@@ -10,73 +10,50 @@ import PnLSummaryCard from '@/components/PnLSummaryCard'
 import useTrades from '@/hooks/useTrades'
 import useBitcoinPrice from '@/hooks/useBitcoinPrice'
 import type { Trade } from '@/types/supabase'
+import { SummaryCards } from '@/components/SummaryCards'
+import { TradeModals } from '@/components/TradeModals'
+import { DashboardLayout } from '@/components/DashboardLayout'
+import { useTradeModals } from '@/hooks/useTradeModals'
 
 export default function Dashboard() {
-  const { 
-    trades, 
-    handleNewTrade, 
-    handleCloseTrade, 
-    handleDeleteTrade,
-    cumulativePnL 
-  } = useTrades()
-  
+  const { trades, handleNewTrade, handleCloseTrade, handleDeleteTrade, cumulativePnL } = useTrades()
   const { currentPrice, priceChange } = useBitcoinPrice()
-  
-  const [openNewTrade, setOpenNewTrade] = useState(false)
-  const [openCloseTrade, setOpenCloseTrade] = useState(false)
-  const [tradeToClose, setTradeToClose] = useState<Trade | null>(null)
+  const {
+    openNewTrade,
+    openCloseTrade,
+    tradeToClose,
+    handleOpenNewTrade,
+    handleCloseNewTrade,
+    handleOpenCloseTrade,
+    handleCloseTradeModal
+  } = useTradeModals()
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: 'background.default', minHeight: '100vh', p: 3 }}>
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        {/* Summary Cards */}
-        <Grid item xs={12} md={4}>
-          <BitcoinPriceCard price={currentPrice} priceChange={priceChange} />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <PnLSummaryCard
-            title="Unrealized P&L"
-            btcValue={cumulativePnL.unrealized.btc}
-            usdValue={cumulativePnL.unrealized.usd}
-          />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <PnLSummaryCard
-            title="Realized P&L"
-            btcValue={cumulativePnL.realized.btc}
-            usdValue={cumulativePnL.realized.usd}
-          />
-        </Grid>
-      </Grid>
+    <DashboardLayout>
+      <SummaryCards 
+        currentPrice={currentPrice}
+        priceChange={priceChange}
+        cumulativePnL={cumulativePnL}
+      />
 
       <TradeTable
         trades={trades}
-        onNewTrade={() => setOpenNewTrade(true)}
+        onNewTrade={handleOpenNewTrade}
         onDeleteTrade={handleDeleteTrade}
-        onCloseTrade={(trade: Trade) => {
-          setTradeToClose(trade as any)
-          setOpenCloseTrade(true)
-        }}
+        onCloseTrade={handleOpenCloseTrade}
       />
 
-      <NewTradeDialog 
-        open={openNewTrade}
-        onClose={() => setOpenNewTrade(false)}
-        onSubmit={handleNewTrade}
+      <TradeModals 
+        openNewTrade={openNewTrade}
+        openCloseTrade={openCloseTrade}
+        tradeToClose={tradeToClose}
         currentBtcPrice={currentPrice}
+        onNewTradeClose={handleCloseNewTrade}
+        onCloseTradeClose={handleCloseTradeModal}
+        onNewTradeSubmit={handleNewTrade}
+        onCloseTradeSubmit={handleCloseTrade}
       />
-
-      <CloseTradeModal
-        open={openCloseTrade}
-        trade={tradeToClose}
-        onClose={() => {
-          setOpenCloseTrade(false)
-          setTradeToClose(null)
-        }}
-        onSubmit={handleCloseTrade}
-        currentBtcPrice={currentPrice}
-      />
-    </Box>
+    </DashboardLayout>
   )
 }
 
